@@ -46,4 +46,10 @@ if [ "$1" == nginx ]; then
     fi
 fi
 
+if [ ! -f /var/www/html/nginx.conf ]; then
+    touch /var/www/html/nginx.conf
+    chown www-data:www-data /var/www/html/nginx.conf
+    chmod 644 /var/www/html/nginx.conf
+fi
+
 exec "$@"
