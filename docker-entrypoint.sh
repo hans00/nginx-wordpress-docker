@@ -28,6 +28,7 @@ if [ "$1" == nginx ]; then
     : "${REAL_IP_HEADER:=X-Forwarded-For}"
     : "${REAL_IP_FROM:=172.17.0.0/16}"
     : "${WP_CONTAINER_NAME:=wordpress}"
+    : "${EXTERNAL_NGINX_CONF:=/var/www/html/nginx.conf}"
 
     common_post_max_size
 
@@ -44,12 +45,16 @@ if [ "$1" == nginx ]; then
     else
         sed -i '/include global\/proxy.conf;/d' /etc/nginx/conf.d/default.conf
     fi
-fi
 
-if [ ! -f /var/www/html/nginx.conf ]; then
-    touch /var/www/html/nginx.conf
-    chown www-data:www-data /var/www/html/nginx.conf
-    chmod 644 /var/www/html/nginx.conf
+    if [ "${EXTERNAL_NGINX_CONF}" != "off" ]; then
+        if [ ! -f "${EXTERNAL_NGINX_CONF}" ]; then
+            touch "${EXTERNAL_NGINX_CONF}"
+            chown 82:82 $EXTERNAL_NGINX_CONF # fixed www-data(82) permission for php-fpm
+            chmod 644 $EXTERNAL_NGINX_CONF
+        fi
+        # auto reload conf
+        bash -c "while inotifywait -q -e close_write ${EXTERNAL_NGINX_CONF}; do nginx -t && echo 'Nginx config will reload.' && sleep 1 && nginx -s reload; done" &
+    fi
 fi
 
 exec "$@"
